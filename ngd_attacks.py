@@ -21,16 +21,7 @@ def gray_to_rgb(height, width, image_gray):
 
 
 
-def f_noise(f,x):
-		#Adds short tailed distributed noise to function result
-		u = random.uniform(0,1)
-		#u = random.randint(2,10)
-		noise = stats.expon.rvs(scale=1/exp_lambda) #exponential
-		#noise = np.exp(-1*u) #exponential
-		noise = u > 0.5 and noise or -1 * noise
-		dist = f(x) + noise
-		##print "Noise %f"%noise
-		return dist 
+
 
 
 def grad_ascent(f, x):
