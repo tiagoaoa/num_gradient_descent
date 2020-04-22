@@ -1,5 +1,8 @@
 '''CIFAR10 Security POC
 Tiago Alves <tiago@ime.uerj.br>'''
+
+'''This portion of the code is based on the example provided Liu Kuan (https://github.com/kuangliu/pytorch-cifar). 
+However, the attacks/defenses in ngd_attacks.py can be used in any other implementations of CIFAR10 classifiers with almost no adaption required.'''
 from __future__ import print_function
 
 import torch
@@ -26,15 +29,10 @@ width, height = (32, 32)
 
 
 parser = argparse.ArgumentParser(description='CIFAR10 Security Attacks')
-parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-parser.add_argument('--resume', '-r', action='store_true', help='resume from checkpoint')
 parser.add_argument('--input-pic', '-i', type=str, help='Input image', required=False)
 parser.add_argument('--target', type=str, help='Target class', required=False)
 args = parser.parse_args()
 
-device = 'cpu'
-best_acc = 0  # best test accuracy
-start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 
 
 transform_test = transforms.Compose([
@@ -91,8 +89,7 @@ criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=5e-4)
 
 
-def test(epoch):
-	global best_acc
+def test(f=net):
 	net.eval()
 	test_loss = 0
 	correct = 0
@@ -100,31 +97,17 @@ def test(epoch):
 	with torch.no_grad():
 		for batch_idx, (inputs, targets) in enumerate(testloader):
 			inputs, targets = inputs.to(device), targets.to(device)
-			outputs = net(inputs)
+			outputs = f(inputs)
 			loss = criterion(outputs, targets)
 
 			test_loss += loss.item()
 			_, predicted = outputs.max(1)
-			print("{} -- {}".format(targets, predicted))
+			#print("{} -- {}".format(targets, predicted))
 			total += targets.size(0)
 			correct += predicted.eq(targets).sum().item()
 
-			#progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
-			#% (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
-
-	# Save checkpoint.
-		acc = 100.*correct/total
-		if acc > best_acc:
-			print('Saving..')
-			state = {
-				'net': net.state_dict(),
-				'acc': acc,
-				'epoch': epoch,
-			}
-			if not os.path.isdir('checkpoint'):
-				os.mkdir('checkpoint')
-			#torch.save(state, './checkpoint/ckpt.t7')
-			best_acc = acc
+			progress_bar(batch_idx, len(testloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+			% (test_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
 def save_img(img, count=None):
@@ -137,7 +120,6 @@ def save_img(img, count=None):
 
 
 
-#@profile
 def test_classifier(h, w, x):
 	#x *= 255
 	pixels = x.reshape((h, w, 3)).astype('uint8')
@@ -206,20 +188,12 @@ if args.input_pic:
 	print("There is input pic")
 	img = Image.open(args.input_pic)
 	h, w, img_array = linearize_pixels(img)	
-	#img_array = np.random.rand(h*w*3)*255
-	#print(img_array)
-	with torch.autograd.profiler.profile(use_cuda=True) as prof:
-		test_classifier(h, w, img_array)
-	print(prof)
-	#print(img)
-	#h, w, img_array = ngd.rgb_to_gray(img)
 
-	#img = save_transform(h, w, img_array)
-	#print(img_array.shape)
+
+	#ith torch.autograd.profiler.profile(use_cuda=True) as prof:
+	test_classifier(h, w, img_array)
+	#rint(prof)
 	
-	#img = Image.fromarray(img) 
-	#print(img_array)	
-	#img = transform_fn(img)
 	if args.target:
 		f = create_f(h, w, classes.index(args.target))
 
@@ -229,25 +203,11 @@ if args.input_pic:
 		
 
 
-
-
-	
-	
 else:
-	test(200)
+	print("No input pic provided.")
+        #You can call test(f=function_to_be_called_for_predictions) to test the accuracy, the default is f=net.
 
-"""
-for batch_idx, (inputs, targets) in enumerate(testloader):
-	#inputs, targets = inputs.to(device), targets.to(device)
 	
-	inputs = inputs[0].unsqueeze(dim=0)
-	outputs = net(inputs)
-	#print(inputs[0])
-	_, index = outputs.max(1)
-	print("{} -- {}".format(targets, index))	
-	#print(outputs)
-	loss = criterion(outputs, targets)
 	
-""" 
 
 
